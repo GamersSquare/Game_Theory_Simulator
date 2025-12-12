@@ -350,6 +350,6 @@ After using this simulator, students should be able to:
 
 ---
 
-**Version**: 2.0  
-**Last Updated**: December 2024  
+**Version**: 1.0  
+**Last Updated**: December 2025  
 **Author**: Game Theory Course Project
