@@ -1,0 +1,17 @@
+# Game Theory Simulator - Requirements File
+
+# Core numerical computing
+numpy>=1.21.0
+
+# Plotting and visualization
+matplotlib>=3.4.0
+
+# Graph visualization for game trees
+networkx>=2.6.0
+
+# Table formatting for payoff matrices
+tabulate>=0.8.9
+
+# Optional: Enhanced interactive features
+# ipython>=7.0.0  # For better interactive experience
+# jupyter>=1.0.0  # For notebook integration
