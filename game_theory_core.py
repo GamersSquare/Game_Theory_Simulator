@@ -1,14 +1,12 @@
 import numpy as np
-from itertools import combinations
-from math import isclose
+from itertools import combinations, product
 from tabulate import tabulate
 import matplotlib.pyplot as plt
 import networkx as nx
 from typing import List, Tuple, Dict, Optional, Set
 
 class NormalFormGame:
-    """Enhanced Normal Form Game with comprehensive analysis capabilities."""
-    
+    # Normal Form Game    
     def __init__(self, payoff_A, payoff_B, strategy_labels=None, game_name="Unnamed Game"):
         self.A = np.array(payoff_A, dtype=float)
         self.B = np.array(payoff_B, dtype=float)
@@ -22,7 +20,7 @@ class NormalFormGame:
             self.labels = strategy_labels
 
     def pure_nash_equilibria(self) -> List[Tuple[int, int]]:
-        """Find all pure strategy Nash equilibria."""
+        # Find all pure strategy Nash equilibria
         equilibria = []
         for i in range(self.m):
             for j in range(self.n):
@@ -33,7 +31,7 @@ class NormalFormGame:
         return equilibria
 
     def expected_payoffs(self, sigma0, sigma1):
-        """Calculate expected payoffs for mixed strategies."""
+        # Calculate expected payoffs for mixed strategies
         sigma0 = np.array(sigma0, dtype=float)
         sigma1 = np.array(sigma1, dtype=float)
         u0 = float(sigma0 @ self.A @ sigma1)
@@ -41,7 +39,7 @@ class NormalFormGame:
         return u0, u1
 
     def support_enumeration_mixed_nash(self):
-        """Find mixed strategy Nash equilibria using support enumeration."""
+        # Find mixed strategy Nash equilibria using support enumeration
         equilibria = []
         supports0 = [set(s) for k in range(1, self.m+1) for s in combinations(range(self.m), k)]
         supports1 = [set(s) for k in range(1, self.n+1) for s in combinations(range(self.n), k)]
@@ -77,7 +75,7 @@ class NormalFormGame:
         return equilibria
 
     def _solve_support_pair(self, S0, S1):
-        """Solve for mixed strategies given support sets."""
+        # Helper to solve linear equations for mixed strategies
         S0 = sorted(list(S0))
         S1 = sorted(list(S1))
         k0, k1 = len(S0), len(S1)
@@ -86,7 +84,7 @@ class NormalFormGame:
             return None, None
             
         try:
-            # Solve for Player 0's strategy
+            # Solve for Player 0
             M0 = []
             b0 = []
             for j in S1[:-1]:
@@ -104,7 +102,7 @@ class NormalFormGame:
             for idx, i in enumerate(S0):
                 sigma0[i] = sol0[idx]
             
-            # Solve for Player 1's strategy
+            # Solve for Player 1
             M1 = []
             b1 = []
             for i in S0[:-1]:
@@ -139,7 +137,7 @@ class NormalFormGame:
             return None, None
 
     def strictly_dominated_pure(self, player: int) -> List[int]:
-        """Find strictly dominated pure strategies for a player."""
+        # Find strictly dominated pure strategies
         dominated = []
         if player == 0:
             for i in range(self.m):
@@ -158,7 +156,7 @@ class NormalFormGame:
         return dominated
 
     def weakly_dominated_pure(self, player: int) -> List[int]:
-        """Find weakly dominated pure strategies for a player."""
+        # Find weakly dominated pure strategies
         dominated = []
         if player == 0:
             for i in range(self.m):
@@ -179,7 +177,7 @@ class NormalFormGame:
         return dominated
 
     def iterative_elimination_strictly_dominated(self):
-        """Iteratively eliminate strictly dominated strategies."""
+        # Iteratively eliminate strictly dominated strategies
         remaining_rows = list(range(self.m))
         remaining_cols = list(range(self.n))
         changed = True
@@ -210,7 +208,7 @@ class NormalFormGame:
         return (remaining_rows, remaining_cols), NormalFormGame(A_red, B_red)
 
     def best_response(self, player: int, opponent_strategy):
-        """Find best response strategies for a player given opponent's strategy."""
+        # Find best response strategies for a player
         opponent_strategy = np.array(opponent_strategy, dtype=float)
         if player == 0:
             expected = opponent_strategy @ self.A.T
@@ -222,50 +220,35 @@ class NormalFormGame:
             return [j for j in range(self.n) if expected[j] >= max_val - 1e-9]
 
     def rationalizable_strategies(self):
-        """Find rationalizable strategies."""
+        # Find rationalizable strategies 
         (rows, cols), _ = self.iterative_elimination_strictly_dominated()
         return rows, cols
+    
+    def to_extensive_form(self):
+        # Convert Normal Form to Extensive Form
 
-    def is_pareto_efficient(self, i: int, j: int) -> bool:
-        """Check if a strategy profile is Pareto efficient."""
-        payoff_i_j = (self.A[i, j], self.B[i, j])
-        for i2 in range(self.m):
-            for j2 in range(self.n):
-                if i2 == i and j2 == j:
-                    continue
-                payoff_other = (self.A[i2, j2], self.B[i2, j2])
-                if (payoff_other[0] >= payoff_i_j[0] and payoff_other[1] >= payoff_i_j[1] and
-                    (payoff_other[0] > payoff_i_j[0] or payoff_other[1] > payoff_i_j[1])):
-                    return False
-        return True
-
-    def pareto_efficient_outcomes(self) -> List[Tuple[int, int]]:
-        """Find all Pareto efficient outcomes."""
-        efficient = []
-        for i in range(self.m):
-            for j in range(self.n):
-                if self.is_pareto_efficient(i, j):
-                    efficient.append((i, j))
-        return efficient
-
-    def social_welfare(self, i: int, j: int) -> float:
-        """Calculate social welfare (sum of payoffs) for a strategy profile."""
-        return self.A[i, j] + self.B[i, j]
-
-    def social_optimum(self) -> Tuple[int, int]:
-        """Find the strategy profile that maximizes social welfare."""
-        max_welfare = float('-inf')
-        best_profile = (0, 0)
-        for i in range(self.m):
-            for j in range(self.n):
-                welfare = self.social_welfare(i, j)
-                if welfare > max_welfare:
-                    max_welfare = welfare
-                    best_profile = (i, j)
-        return best_profile
+        tree = {'root': {'player': 0, 'actions': {}}}
+        
+        # Player 0 moves first (Root)
+        for i, strat0 in enumerate(self.labels[0]):
+            node_p0 = f"P0_{strat0}"
+            tree['root']['actions'][strat0] = node_p0
+            
+            # Create node for Player 1
+            tree[node_p0] = {'player': 1, 'actions': {}}
+            
+            # Player 1 moves second
+            for j, strat1 in enumerate(self.labels[1]):
+                node_terminal = f"End_{strat0}_{strat1}"
+                tree[node_p0]['actions'][strat1] = node_terminal
+                
+                # Terminal node with payoffs
+                tree[node_terminal] = {'payoff': (self.A[i, j], self.B[i, j])}
+        
+        return ExtensiveFormGame(tree, ['Player 0', 'Player 1'], f"{self.game_name} (Extensive)")
 
     def pretty_print(self):
-        """Print the game in a formatted table."""
+        # Print the game in a formatted table
         print(f"\n{'='*60}")
         print(f"Game: {self.game_name}")
         print(f"{'='*60}")
@@ -279,7 +262,7 @@ class NormalFormGame:
         print(tabulate(table, headers=headers, tablefmt='grid'))
 
     def comprehensive_analysis(self):
-        """Perform and display comprehensive game analysis."""
+        # Perform and display comprehensive game analysis (Nash, Dominance, etc
         print(f"\n{'='*60}")
         print(f"COMPREHENSIVE ANALYSIS: {self.game_name}")
         print(f"{'='*60}\n")
@@ -330,23 +313,11 @@ class NormalFormGame:
         print(f"   Player 0: {[self.labels[0][i] for i in rat0]}")
         print(f"   Player 1: {[self.labels[1][j] for j in rat1]}")
         
-        # 5. Pareto Efficiency
-        print("\n5. PARETO EFFICIENT OUTCOMES:")
-        pareto = self.pareto_efficient_outcomes()
-        if pareto:
-            for i, j in pareto:
-                print(f"   ({self.labels[0][i]}, {self.labels[1][j]}) with payoffs ({self.A[i,j]:.2f}, {self.B[i,j]:.2f})")
-        
-        # 6. Social Optimum
-        print("\n6. SOCIAL OPTIMUM (Maximum Total Welfare):")
-        i_opt, j_opt = self.social_optimum()
-        welfare = self.social_welfare(i_opt, j_opt)
-        print(f"   ({self.labels[0][i_opt]}, {self.labels[1][j_opt]}) with total welfare {welfare:.2f}")
-        
         print(f"\n{'='*60}\n")
 
     def plot_payoff_heatmap(self, filename='payoff_heatmaps.png'):
-        """Generate heatmap visualization of payoff matrices."""
+        # Generate heatmap visualization of payoff matrices
+
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
         
         cax1 = ax1.matshow(self.A, cmap='RdYlGn', alpha=0.7)
@@ -388,7 +359,7 @@ class NormalFormGame:
 
 
 class ExtensiveFormGame:
-    """Enhanced Extensive Form Game with backward induction and SPNE."""
+    # Extensive Form Game with Backward Induction and Normal Form Conversion
     
     def __init__(self, tree: Dict, players: List[str], game_name: str = "Unnamed Extensive Game"):
         self.tree = tree
@@ -397,7 +368,7 @@ class ExtensiveFormGame:
         self._validate_tree()
 
     def _validate_tree(self):
-        """Validate the game tree structure."""
+        # Validate the game tree structure
         if 'root' not in self.tree:
             raise ValueError("Tree must have a 'root' node")
         
@@ -417,10 +388,8 @@ class ExtensiveFormGame:
         visit('root')
 
     def backward_induction(self, node='root'):
-        """
-        Perform backward induction to find subgame perfect Nash equilibrium.
-        Returns the equilibrium strategy profile and value at each node.
-        """
+        # Perform backward induction to find subgame perfect Nash equilibrium
+
         if 'payoff' in self.tree[node]:
             return self.tree[node]['payoff'], {}
         
@@ -451,12 +420,83 @@ class ExtensiveFormGame:
         return best_value, equilibrium_strategy
 
     def find_spne(self):
-        """Find Subgame Perfect Nash Equilibrium."""
+        # Find Subgame Perfect Nash Equilibrium
         value, strategy = self.backward_induction()
         return strategy, value
 
+    def to_normal_form(self) -> NormalFormGame:
+        # Convert the Extensive Form to a Normal Form
+          
+        # 1. Identify all decision nodes for each player
+        nodes_by_player = {0: [], 1: []}
+        
+        def find_decision_nodes(node_id):
+            node_data = self.tree[node_id]
+            if 'payoff' in node_data:
+                return
+            
+            player = node_data['player']
+            nodes_by_player[player].append(node_id)
+            
+            for _, next_node_id in node_data['actions'].items():
+                find_decision_nodes(next_node_id)
+                
+        find_decision_nodes('root')
+        
+        # 2. Generate all pure strategies
+        # A strategy is a combination of actions: one action for each decision node the player controls
+        strategies = {0: [], 1: []}
+        
+        for p in [0, 1]:
+            nodes = nodes_by_player[p]
+            if not nodes:
+                # If a player has no moves, they have 1 dummy strategy
+                strategies[p] = [("NoMove",)] 
+            else:
+                lists_of_actions = []
+                for node in nodes:
+                    lists_of_actions.append(list(self.tree[node]['actions'].keys()))
+                strategies[p] = list(product(*lists_of_actions))
+
+        # 3. Create Payoff Matrices
+        m = len(strategies[0])
+        n = len(strategies[1])
+        A = np.zeros((m, n))
+        B = np.zeros((m, n))
+        
+        # Helper to traverse tree given a profile
+        def get_payoff(p0_strat_idx, p1_strat_idx):
+            p0_moves = dict(zip(nodes_by_player[0], strategies[0][p0_strat_idx]))
+            p1_moves = dict(zip(nodes_by_player[1], strategies[1][p1_strat_idx]))
+            all_moves = {**p0_moves, **p1_moves}
+            
+            current_node = 'root'
+            while 'payoff' not in self.tree[current_node]:
+                node_data = self.tree[current_node]
+                # If player has no moves (dummy), this logic naturally skips them if they don't own the node
+                # But here we just look up the node owner
+                action = all_moves[current_node]
+                current_node = node_data['actions'][action]
+            
+            return self.tree[current_node]['payoff']
+
+        # Fill matrices
+        for i in range(m):
+            for j in range(n):
+                payoff = get_payoff(i, j)
+                A[i, j] = payoff[0]
+                B[i, j] = payoff[1]
+
+        # 4. Generate Labels
+        # Strategy name format: "Action1_Action2" representing actions at subsequent nodes
+        labels0 = ["-".join(s) for s in strategies[0]]
+        labels1 = ["-".join(s) for s in strategies[1]]
+
+        return NormalFormGame(A, B, (labels0, labels1), f"{self.game_name} (Normal Form)")
+
     def pretty_print(self):
-        """Print the extensive form game structure."""
+        # Print the extensive form game structure
+        
         print(f"\n{'='*60}")
         print(f"Extensive Form Game: {self.game_name}")
         print(f"{'='*60}")
@@ -479,7 +519,8 @@ class ExtensiveFormGame:
         print_node('root')
 
     def comprehensive_analysis(self):
-        """Perform comprehensive analysis of the extensive form game."""
+        # Perform comprehensive analysis of the extensive form game
+
         print(f"\n{'='*60}")
         print(f"COMPREHENSIVE ANALYSIS: {self.game_name}")
         print(f"{'='*60}\n")
@@ -499,7 +540,8 @@ class ExtensiveFormGame:
         print(f"\n{'='*60}\n")
 
     def plot_tree(self, filename='game_tree.png'):
-        """Generate visual representation of the game tree."""
+        # Generate visual representation of the game tree
+        
         G = nx.DiGraph()
         pos = {}
         node_labels = {}
